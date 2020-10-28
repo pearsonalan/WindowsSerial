@@ -1,19 +1,10 @@
 # WindowsSerial
 
-Win32 test program based on code from https://aticleworld.com/serial-port-programming-using-win32-api/ 
+Win32 test programs based on code from https://aticleworld.com/serial-port-programming-using-win32-api/ 
 which connects to the Arduino over the Serial Port and prints data received from the Arduiono.
 
-This code uses a Baud rate of 115,200, which can be change by altering the parameters to SetCommState().
+## Programs
 
-## Compiling
-
-```
-CMD> nmake
-```
-
-## Usage
-
-Example:
-```
-serial.exe -port COM4
-```
+* [__Console App__](ConsoleApp/README.md) - Read from the Arduino via the serial port and print all output.
+  Essentially a console serial monitor.
+* [__Monitor__](Monitor/README.md) - A Windows GUI serial monitor
