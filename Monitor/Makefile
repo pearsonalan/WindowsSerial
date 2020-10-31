@@ -11,7 +11,7 @@ DEFINES=/D "_DEBUG" /D "_WINDOWS" /D "_UNICODE" /D "UNICODE"
 INCLUDES=
 
 APP=monitor.exe
-OBJS=winfx.obj MainWindow.obj MonitorApp.obj PreferencesDialog.obj Registry.obj
+OBJS=winfx.obj MainWindow.obj MonitorApp.obj PreferencesDialog.obj Registry.obj Serial.obj
 RES=monitor.res
 
 HTML=README.html
@@ -29,6 +29,7 @@ MainWindow.obj: MainWindow.cpp MainWindow.h PreferencesDialog.h framework.h winf
 MonitorApp.obj: MonitorApp.cpp MainWindow.h framework.h winfx.h Resource.h
 PreferencesDialog.obj: PreferencesDialog.cpp PreferencesDialog.h framework.h winfx.h Registry.h Resource.h Monitor.h
 Registry.obj: Registry.cpp framework.h winfx.h Registry.h
+Serial.obj: Serial.cpp framework.h winfx.h Serial.h
 winfx.obj: winfx.cpp framework.h winfx.h
 
 .cpp.obj:
