@@ -42,36 +42,43 @@ struct Rect : public tagRECT {
 };
 	
 class App {
-protected:
-	HINSTANCE 	hInst;
-	DWORD		dwExitCode ;
-
-	static App* singleton;
-		
 public:
-
 	App() {
-		hInst = 0;
-		dwExitCode = 0;
-		singleton = this;
+		singleton_ = this;
 	}
 
 	virtual ~App();
 
-	static App& getSingleton() { return *singleton; }
+	static App& getSingleton() { return *singleton_; }
 		
-	HINSTANCE getInstance() { return hInst; }
-	DWORD getExitCode() { return dwExitCode; }
+	HINSTANCE getInstance() { return hInst_; }
+	DWORD getExitCode() { return dwExitCode_; }
 	std::wstring loadString(UINT uID) {
 		wchar_t buffer[1024];
-		LoadStringW(hInst, uID, buffer, 1024);
+		::LoadStringW(hInst_, uID, buffer, 1024);
 		return std::wstring(buffer);
 	}
 
 	virtual bool initInstance(HINSTANCE hInst, HINSTANCE hInstPrev);
 	virtual bool initWindow(LPWSTR pwstrCmdLine, int nCmdShow) = 0;
-	virtual void terminate();
 	virtual bool translateModelessMessage(MSG* pmsg);
+
+	// Runs the main message loop of the application
+	void processMessages();
+
+	// May be overridden by derived classes to perform cleanup before
+	// exit.
+	virtual void beforeTerminate();
+
+protected:
+	HINSTANCE hInst_ = 0;
+	DWORD dwExitCode_  = 0;
+
+	// Array of Handles to wait on in message loop
+	HANDLE wait_handles_[MAXIMUM_WAIT_OBJECTS] = { 0 };
+	DWORD handle_count_ = 0;
+
+	static App* singleton_;
 };
 
 class Window {

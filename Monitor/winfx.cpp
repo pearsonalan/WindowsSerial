@@ -34,8 +34,8 @@ bool Window::create(LPWSTR pstrCmdLine, int nCmdShow) {
 	Point pos = getDefaultWindowPosition();
 	Size  sz  = getDefaultWindowSize();
 		
-    hwnd = CreateWindowEx(WS_EX_APPWINDOW,
-		                  className.c_str(), windowName.c_str(),
+	hwnd = CreateWindowEx(WS_EX_APPWINDOW,
+						  className.c_str(), windowName.c_str(),
 						  WS_OVERLAPPEDWINDOW,
 						  pos.x, pos.y,
 						  sz.cx, sz.cy,
@@ -46,9 +46,9 @@ bool Window::create(LPWSTR pstrCmdLine, int nCmdShow) {
 		winfx::DebugOut(L"Could not create window\n");
 	}
 
-    ShowWindow(hwnd, nCmdShow);
+	ShowWindow(hwnd, nCmdShow);
 
-    return true;
+	return true;
 }
 
 Point Window::getDefaultWindowPosition() {
@@ -210,11 +210,11 @@ BOOL CALLBACK DialogProc(HWND hwndParam, UINT uMsg, WPARAM wParam, LPARAM lParam
 App::~App() {
 }
 
-void App::terminate() {
+void App::beforeTerminate() {
 }
 
 bool App::initInstance( HINSTANCE hInstParam, HINSTANCE hInstPrev ) {
-	hInst = hInstParam;
+	hInst_ = hInstParam;
 	return true;
 }
 
@@ -222,7 +222,70 @@ bool App::translateModelessMessage(MSG* pmsg) {
 	return false;
 }
 
-App* App::singleton = NULL;
+#define USE_WAIT_FOR_MULTIPLE_OBJECTS 1
+
+#if USE_WAIT_FOR_MULTIPLE_OBJECTS
+
+void App::processMessages() {
+	for (;;) {
+		winfx::DebugOut(L"Waiting for an event or message");
+		DWORD wait_result =
+			::MsgWaitForMultipleObjectsEx(handle_count_,
+										  wait_handles_,
+										  INFINITE,
+										  QS_ALLEVENTS, 
+										  MWMO_INPUTAVAILABLE);
+		if (wait_result >= WAIT_OBJECT_0 &&
+			wait_result < WAIT_OBJECT_0 + handle_count_) {
+			// One of the handles is signaled
+			int signaled_event_index = wait_result - WAIT_OBJECT_0;
+			winfx::DebugOut(L"Event %d is signaled", signaled_event_index);
+		} else if (wait_result == WAIT_OBJECT_0 + handle_count_) {
+			// A windows message is available for processing.
+			winfx::DebugOut(L"Input events are available");
+			MSG msg;
+			while (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+				winfx::DebugOut(L"Peeked message %d", msg.message);
+				if (!translateModelessMessage(&msg)) {
+					::TranslateMessage(&msg);
+					::DispatchMessage(&msg);
+				}
+				if (msg.message == WM_QUIT) {
+					winfx::DebugOut(L"Exiting on quit message");
+					return;
+				}
+			}
+			winfx::DebugOut(L"No more input events");
+		} else if (wait_result == WAIT_TIMEOUT) {
+			// Unexpected if we aren't using a timer...
+		} else if (wait_result == WAIT_FAILED) {
+			// Unexpected
+			winfx::DebugOut(L"Wait failure");
+			return;
+		} else {
+			// Shouldn't be any other result.
+			winfx::DebugOut(L"Unexpected Wait result %d", wait_result);
+			return;
+		}
+	}
+}
+
+#else
+
+void App::processMessages() {
+	MSG msg;
+	while (GetMessage(&msg, NULL, 0, 0)) {
+		if (!translateModelessMessage(&msg)) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+	}
+}
+
+#endif
+
+
+App* App::singleton_ = NULL;
 
 }  // namespace winfx
 
@@ -237,16 +300,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE     hInst,
 
 	if (!app.initWindow(pwstrCmdLine, nCmdShow))
 		return app.getExitCode();
+	app.processMessages();
+	app.beforeTerminate();
 
-	MSG msg;
-	while (GetMessage(&msg, NULL, 0, 0)) {
-		if (!app.translateModelessMessage(&msg)) {
-			TranslateMessage(&msg); 
-			DispatchMessage(&msg);
-		}
-	} 
-
-	app.terminate();
-
-    return app.getExitCode();  
+	return app.getExitCode();
 }
