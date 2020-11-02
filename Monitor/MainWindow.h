@@ -18,12 +18,16 @@
 #include "framework.h"
 #include "winfx.h"
 #include "Resource.h"
+#include "Serial.h"
+#include "StatusWindow.h"
+#include "TextWindow.h"
 
 class MainWindow : public winfx::Window {
 public:
 	MainWindow() : 
-		winfx::Window(winfx::loadString(IDS_APP_CLASS), winfx::loadString(IDS_APP_TITLE)) {
-	}
+		winfx::Window(winfx::loadString(IDS_APP_CLASS), winfx::loadString(IDS_APP_TITLE)),
+		status_window_(this),
+		text_window_(this) {}
 
 	void modifyWndClass(WNDCLASSEXW& wc) override;
 	winfx::Size getDefaultWindowSize() override;
@@ -34,9 +38,19 @@ public:
 	LRESULT onClose(HWND hwnd) override;
 
 protected:
+	void connectSerial();
+
+	// Save window size so it can be reopened to the same size
+	void saveWindowSize();
+
 	void onCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);
 	void onDestroy(HWND hwnd);
 	void onPaint(HWND hwnd);
+	LRESULT onSize(HWND hwnd, UINT state, int cx, int cy);
+
+	Serial serial_;
+	StatusWindow status_window_;
+	TextWindow text_window_;
 };
 
 class AboutDialog : public winfx::Dialog {

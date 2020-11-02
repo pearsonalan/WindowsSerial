@@ -17,13 +17,12 @@
 
 namespace winfx {
 	
-LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 Window::~Window() {
 }
 
-bool Window::create(LPWSTR pstrCmdLine, int nCmdShow) {
+bool Window::createAppWindow(LPWSTR pstrCmdLine, int nCmdShow) {
 	if (!classIsRegistered) {
 		if (!registerWindowClass()) {
 			winfx::DebugOut(L"Failed to register window class: %08x\n", GetLastError());
@@ -42,13 +41,37 @@ bool Window::create(LPWSTR pstrCmdLine, int nCmdShow) {
 						  HWND_DESKTOP, NULL,
 						  App::getSingleton().getInstance(), this);
 	if (!hwnd) {
-		return false;
 		winfx::DebugOut(L"Could not create window\n");
+		return false;
 	}
 
 	ShowWindow(hwnd, nCmdShow);
 
 	return true;
+}
+
+bool Window::createChildWindow(Point pos, Size size, DWORD child_window_id) {
+	if (!classIsRegistered) {
+		if (!registerWindowClass()) {
+			winfx::DebugOut(L"Failed to register window class: %08x\n", GetLastError());
+			return false;
+		}
+	}
+
+	hwnd = CreateWindowEx(WS_EX_LEFT | WS_EX_LTRREADING | WS_EX_RIGHTSCROLLBAR,  // Defaults
+						  className.c_str(), L"",
+						  WS_CHILD,
+						  pos.x, pos.y,
+						  size.cx, size.cy,
+						  pwndParent->getWindow(),
+						  reinterpret_cast<HMENU>(static_cast<int64_t>(child_window_id)),
+						  App::getSingleton().getInstance(), this);
+	if (!hwnd) {
+		winfx::DebugOut(L"Could not create window\n");
+		return false;
+	}
+	ShowWindow(hwnd, SW_SHOW);
+	return false;
 }
 
 Point Window::getDefaultWindowPosition() {
@@ -228,7 +251,7 @@ bool App::translateModelessMessage(MSG* pmsg) {
 
 void App::processMessages() {
 	for (;;) {
-		winfx::DebugOut(L"Waiting for an event or message");
+		// winfx::DebugOut(L"Waiting for an event or message");
 		DWORD wait_result =
 			::MsgWaitForMultipleObjectsEx(handle_count_,
 										  wait_handles_,
@@ -242,10 +265,10 @@ void App::processMessages() {
 			winfx::DebugOut(L"Event %d is signaled", signaled_event_index);
 		} else if (wait_result == WAIT_OBJECT_0 + handle_count_) {
 			// A windows message is available for processing.
-			winfx::DebugOut(L"Input events are available");
+			// winfx::DebugOut(L"Input events are available");
 			MSG msg;
 			while (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-				winfx::DebugOut(L"Peeked message %d", msg.message);
+				// winfx::DebugOut(L"Peeked message %d", msg.message);
 				if (!translateModelessMessage(&msg)) {
 					::TranslateMessage(&msg);
 					::DispatchMessage(&msg);
@@ -255,7 +278,7 @@ void App::processMessages() {
 					return;
 				}
 			}
-			winfx::DebugOut(L"No more input events");
+			// winfx::DebugOut(L"No more input events");
 		} else if (wait_result == WAIT_TIMEOUT) {
 			// Unexpected if we aren't using a timer...
 		} else if (wait_result == WAIT_FAILED) {

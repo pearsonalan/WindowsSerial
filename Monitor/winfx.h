@@ -91,38 +91,56 @@ protected:
 
 public:
 	
-	Window(Window* pwndParent_in = 0) :
+	explicit Window(Window* pwndParent_in = 0) :
 		hwnd(0),
 		pwndParent(pwndParent_in),
-		classIsRegistered(false)
-		{		
-		}
+		classIsRegistered(false) {}
+
+	Window(std::wstring classNameIn, Window* pwndParentIn = 0) :
+		hwnd(0),
+		pwndParent(pwndParentIn),
+		className(classNameIn),
+		classIsRegistered(false) {}
 
 	Window(std::wstring classNameIn, std::wstring windowNameIn, Window* pwndParentIn = 0) :
 		hwnd(0),
 		pwndParent(pwndParentIn),
 		className(classNameIn),
 		windowName(windowNameIn),
-		classIsRegistered(false)
-		{		
-		}
+		classIsRegistered(false) {}
 
 	virtual ~Window();
 	
+	// Accessors
 	HWND getWindow() { return hwnd; }
-	virtual bool create(LPWSTR pstrCmdLine, int nCmdShow);
+
+	// Creates the window as a top-level (overlapped) window
+	virtual bool createAppWindow(LPWSTR pstrCmdLine, int nCmdShow);
+
+	// Creates the window as a child window
+	virtual bool createChildWindow(Point pos, Size size, DWORD child_window_id);
+
 	void destroy() { ::DestroyWindow(hwnd); }
-	void setWindowHandle(HWND hwndParam) { hwnd = hwndParam; }
 
 	Rect getClientRect() { Rect r; ::GetClientRect(hwnd, (LPRECT)r); return r; }
+	Rect getWindowRect() { Rect r; ::GetWindowRect(hwnd, (LPRECT)r); return r; }
 		
 	int messageBox(const std::wstring& text, const std::wstring& caption, UINT uType = MB_OK ) {
 		return ::MessageBox(hwnd, text.c_str(), caption.c_str(), uType);
 	}
+	int messageBox(const std::wstring& text, UINT uType = MB_OK ) {
+		return messageBox(text, windowName, uType);
+	}
+
+	bool moveWindow(Point pos, Size size, bool repaint) {
+		return (bool) ::MoveWindow(hwnd, pos.x, pos.y, size.cx, size.cy, repaint);
+	}
+
 	void showWindow(int nCmdShow) { ::ShowWindow(hwnd, nCmdShow); }
 	bool setWindowPos(HWND hwndBefore, int x, int y, int cx, int cy, UINT uiFlags) {
 		return ::SetWindowPos(hwnd, hwndBefore, x, y, cx, cy, uiFlags); 
 	}
+
 	bool postMessage(UINT msg, WPARAM wparam, LPARAM lparam) { 
 		return (bool) ::PostMessage(hwnd, msg, wparam, lparam);
 	}
@@ -136,6 +154,12 @@ public:
 		
 	virtual void modifyWndClass(WNDCLASSEXW& wc);
 	virtual LRESULT handleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+private:
+	friend LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+	// Called by the WndProc to set the window handle during window creation.
+	void setWindowHandle(HWND hwndParam) { hwnd = hwndParam; }
 };
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);

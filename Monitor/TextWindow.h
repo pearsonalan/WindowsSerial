@@ -13,13 +13,21 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.If not, see < https://www.gnu.org/licenses/>.
 
-#include "framework.h"
+#pragma once
+
 #include "winfx.h"
-#include "MonitorApp.h"
 #include "Resource.h"
 
-bool MonitorApp::initWindow(LPWSTR pwstrCmdLine, int nCmdShow) {
-	return mainWindow.createAppWindow(pwstrCmdLine, nCmdShow);
-}
+class TextWindow : public winfx::Window {
+public:
+	explicit TextWindow(winfx::Window* parent_window) : 
+		winfx::Window(winfx::loadString(IDC_TEXT_WINDOW), parent_window) {
+	}
 
-MonitorApp app;
+	void modifyWndClass(WNDCLASSEXW& wc) override;
+
+	LRESULT handleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+
+protected:
+	void onPaint(HWND hwnd);
+};

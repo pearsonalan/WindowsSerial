@@ -17,29 +17,35 @@
 #include "Serial.h"
 
 // Open the serial com port
-HRESULT Serial::Open() {
+HRESULT Serial::open() {
 	if (com_port_ != INVALID_HANDLE_VALUE) {
-		Close();
+		close();
+	}
+
+	if (port_file_name_.empty()) {
+		winfx::DebugOut(L"Have not set the comm port");
+		return E_INVALIDARG;
 	}
 
 	com_port_ = ::CreateFile(port_file_name_.c_str(),
 							 GENERIC_READ | GENERIC_WRITE, 0,
 							 NULL, OPEN_EXISTING, 0, NULL);
 	if (com_port_ == INVALID_HANDLE_VALUE) {
-		return Error(L"Failed to open port");
+		return error(L"Failed to open port");
 	}
 
-	HRESULT hr = SetBaudRate();
+	HRESULT hr = initializePort();
 	if (FAILED(hr)) return hr;
 
+	winfx::DebugOut(L"Opened com port %s", port_file_name_.c_str());
 	return S_OK;
 }
 
-HRESULT Serial::SetBaudRate() {
+HRESULT Serial::initializePort() {
 	DCB dcbSerialParams = { 0 };
 	dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
 	if (!::GetCommState(com_port_, &dcbSerialParams)) {
-		return Error(L"GetCommState failed");
+		return error(L"GetCommState failed");
 	}
 
 	dcbSerialParams.BaudRate = baud_rate_;
@@ -47,20 +53,20 @@ HRESULT Serial::SetBaudRate() {
 	dcbSerialParams.StopBits = ONESTOPBIT;
 	dcbSerialParams.Parity = NOPARITY;
 	if (!::SetCommState(com_port_, &dcbSerialParams)) {
-		return Error(L"SetCommState failed");
+		return error(L"SetCommState failed");
 	}
 
 	return S_OK;
 }
 
-HRESULT Serial::Error(const std::wstring& message) {
+HRESULT Serial::error(const std::wstring& message) {
 	DWORD error = ::GetLastError();
 	winfx::DebugOut(L"Serial[%s]: %s: Error %08X",
 					port_file_name_.c_str(), message.c_str(), error);
 	return HRESULT_FROM_WIN32(error);
 }
 
-void Serial::Close() {
+void Serial::close() {
 	if (com_port_ != INVALID_HANDLE_VALUE) {
 		CloseHandle(com_port_);
 		com_port_ = INVALID_HANDLE_VALUE;

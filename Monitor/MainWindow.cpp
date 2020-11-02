@@ -37,11 +37,15 @@ LRESULT MainWindow::handleWindowMessage(HWND hwndParam, UINT uMsg,
 		HANDLE_MSG(hwndParam, WM_COMMAND, onCommand);
 		HANDLE_MSG(hwndParam, WM_DESTROY, onDestroy);
 		HANDLE_MSG(hwndParam, WM_PAINT, onPaint);
+		HANDLE_MSG(hwndParam, WM_SIZE, onSize);
 	}
 	return Window::handleWindowMessage(hwndParam, uMsg, wParam, lParam);
 }
 
 LRESULT MainWindow::onCreate(HWND hwndParam, LPCREATESTRUCT lpCreateStruct) {
+	connectSerial();
+	status_window_.createChildWindow(winfx::Point(0, 20), winfx::Size(100, 100), IDC_STATUS_WINDOW);
+	text_window_.createChildWindow(winfx::Point(0, 0), winfx::Size(20, 20), IDC_TEXT_WINDOW);
 	return winfx::Window::onCreate(hwndParam, lpCreateStruct);
 }
 
@@ -68,20 +72,55 @@ void MainWindow::onPaint(HWND hwnd) {
 	EndPaint(hwnd, &ps);
 }
 
+LRESULT MainWindow::onSize(HWND hwnd, UINT state, int cx, int cy) {
+	winfx::DebugOut(L"onSize state=%d, cx=%d, cy=%d", state, cx, cy);
+	if (state == SIZE_RESTORED) {
+		status_window_.moveWindow(winfx::Point(0, cy-20), winfx::Size(cx, 20), true);
+		text_window_.moveWindow(winfx::Point(0, 0), winfx::Size(cx, cy-20), true);
+	}
+	return 0;
+}
+
 LRESULT MainWindow::onClose(HWND hwnd) {
 	winfx::DebugOut(L"onClose");
-	winfx::Rect r = getClientRect();
-	RegistryKey settings = RegistryKey::CurrentUser.openOrCreate(kRegistryKeyName);
-	if (settings != RegistryKey::InvalidKey) {
-		settings.setIntegerValue(L"WindowCX", r.width());
-		settings.setIntegerValue(L"WindowCY", r.height());
-	}
+	saveWindowSize();
 	PostQuitMessage(0);
 	return 0;
 }
 
 void MainWindow::onDestroy(HWND hwnd) {
 	winfx::DebugOut(L"onDestroy");
+	saveWindowSize();
 	PostQuitMessage(0);
 }
 
+void MainWindow::connectSerial() {
+	serial_.setComPort(L"\\\\.\\COM4");
+	serial_.setBaudRate(115200);
+
+	HRESULT hr;
+	if (FAILED(hr = serial_.open())) {
+		winfx::DebugOut(L"Could not open serial port. Error %08x", hr);
+	}
+}
+
+void MainWindow::saveWindowSize() {
+	WINDOWPLACEMENT placement;
+	placement.length = sizeof(WINDOWPLACEMENT);
+	::GetWindowPlacement(hwnd, &placement);
+
+	winfx::DebugOut(L"placement: x=%d, y=%d, cx=%d, cy=%d, show=%d",
+		placement.rcNormalPosition.left,
+		placement.rcNormalPosition.top,
+		placement.rcNormalPosition.right - placement.rcNormalPosition.left,
+		placement.rcNormalPosition.bottom - placement.rcNormalPosition.top,
+		placement.showCmd);
+
+	// Save window size so it can be reopened to the same size
+	winfx::Rect r = getWindowRect();
+	RegistryKey settings = RegistryKey::CurrentUser.openOrCreate(kRegistryKeyName);
+	if (settings != RegistryKey::InvalidKey) {
+		settings.setIntegerValue(L"WindowCX", r.width());
+		settings.setIntegerValue(L"WindowCY", r.height());
+	}
+}

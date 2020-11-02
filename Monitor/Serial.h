@@ -19,22 +19,32 @@
 
 class Serial {
 public:
-	Serial(const std::wstring& port_file_name, int baud_rate) :
+	Serial(int baud_rate = 9600) : baud_rate_(baud_rate) {}
+	Serial(const std::wstring& port_file_name, int baud_rate = 9600) :
 		port_file_name_(port_file_name), baud_rate_(baud_rate) {}
-	virtual ~Serial() { Close(); }
 
+	virtual ~Serial() { close(); }
+
+	void setComPort(const std::wstring& port_file_name) {
+		port_file_name_ = port_file_name;
+	}
+
+	void setBaudRate(int baud_rate) {
+		baud_rate_ = baud_rate;
+	}
+	
 	// Open the serial com port
-	HRESULT Open();
+	HRESULT open();
 
-	void Close();
+	void close();
 
 private:
-	// Sets the Baud Rate on the com port after opening.
-	HRESULT SetBaudRate();
+	// Initialize the com port after opening.
+	HRESULT initializePort();
 
 	// Log an error message to DebugOut and return an HRESULT for
 	// the error code returned by GetLastError()
-	HRESULT Error(const std::wstring& message);
+	HRESULT error(const std::wstring& message);
 
 	std::wstring port_file_name_;
 	HANDLE com_port_ = INVALID_HANDLE_VALUE;
