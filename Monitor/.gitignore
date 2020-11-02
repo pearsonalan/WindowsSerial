@@ -1,4 +1,7 @@
+.vs
 README.html
 *.obj
 *.res
 *.exe
+*.pdb
+*.ilk
