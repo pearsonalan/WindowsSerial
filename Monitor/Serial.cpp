@@ -29,7 +29,8 @@ HRESULT Serial::open() {
 
 	com_port_ = ::CreateFile(port_file_name_.c_str(),
 							 GENERIC_READ | GENERIC_WRITE, 0,
-							 NULL, OPEN_EXISTING, 0, NULL);
+							 NULL, OPEN_EXISTING,
+							 FILE_FLAG_OVERLAPPED, NULL);
 	if (com_port_ == INVALID_HANDLE_VALUE) {
 		return error(L"Failed to open port");
 	}
@@ -37,8 +38,18 @@ HRESULT Serial::open() {
 	HRESULT hr = initializePort();
 	if (FAILED(hr)) return hr;
 
+	hr = setCommTimeouts();
+	if (FAILED(hr)) return hr;
+
 	winfx::DebugOut(L"Opened com port %s", port_file_name_.c_str());
-	return S_OK;
+
+	event_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+	overlapped_.hEvent = event_;
+
+	winfx::App::getSingleton().addEventHandler(event_, 
+		std::bind(&Serial::onAsyncReadCompleted, this));
+
+	return startAsyncRead();
 }
 
 HRESULT Serial::initializePort() {
@@ -59,6 +70,75 @@ HRESULT Serial::initializePort() {
 	return S_OK;
 }
 
+HRESULT Serial::setCommTimeouts() {
+	// Set Timeouts
+	COMMTIMEOUTS timeouts = { 0 };
+	timeouts.ReadIntervalTimeout = 5;
+	timeouts.ReadTotalTimeoutConstant = 5;
+	timeouts.ReadTotalTimeoutMultiplier = 100;
+	timeouts.WriteTotalTimeoutConstant = 50;
+	timeouts.WriteTotalTimeoutMultiplier = 10;
+	if (!::SetCommTimeouts(com_port_, &timeouts)) {
+		return error(L"SetCommTimeouts failed");
+	}
+	return S_OK;
+}
+
+HRESULT Serial::startAsyncRead() {
+	if (com_port_ == INVALID_HANDLE_VALUE) {
+		winfx::DebugOut(L"Cannot start Serial read. Com port is not open");
+		return E_INVALIDARG;
+	}
+
+	// Start an overlapped read operation. If the read succeeds immediately, we process
+	// the buffer and try to start an async read again.
+	for (;;) {
+		DWORD bytes_transferred = 0;
+		if (::ReadFile(com_port_, &read_buffer_, kReadBufferSize,
+					   &bytes_transferred, &overlapped_)) {
+			// Read was successful. Process the data.
+			processReadBuffer(bytes_transferred);
+		} else {
+			DWORD error_code = GetLastError();
+			if (error_code == ERROR_IO_PENDING) {
+				// The async operation is pending.
+				return S_OK;
+			} else {
+				// A different failure happened.
+				winfx::DebugOut(L"Serial[%s]: Error %08X in ReadFile",
+								port_file_name_.c_str(), error_code);
+				return HRESULT_FROM_WIN32(error_code);
+			}
+		}
+	}
+}
+
+HRESULT Serial::onAsyncReadCompleted() {
+	// Find out the result of the read.
+	DWORD bytes_transferred = 0;
+	if (::GetOverlappedResult(com_port_, &overlapped_, &bytes_transferred, FALSE)) {
+		if (bytes_transferred > 0) {
+			processReadBuffer(bytes_transferred);
+		}
+	}
+	startAsyncRead();
+	return S_OK;
+}
+
+void Serial::processReadBuffer(DWORD byte_count) {
+	winfx::DebugOut(L"Serial[%s]: read %d bytes", port_file_name_.c_str(), byte_count);
+
+	wchar_t buffer[kReadBufferSize + 1];
+
+	int chars_converted = MultiByteToWideChar(437, MB_PRECOMPOSED,
+		(LPCCH)read_buffer_, byte_count,
+		buffer, kReadBufferSize + 1);
+	if (chars_converted > 0) {
+		buffer[chars_converted] = L'\0';
+		winfx::DebugOut(L"READ: %s", buffer);
+	}
+}
+
 HRESULT Serial::error(const std::wstring& message) {
 	DWORD error = ::GetLastError();
 	winfx::DebugOut(L"Serial[%s]: %s: Error %08X",
@@ -71,7 +151,13 @@ void Serial::close() {
 		CloseHandle(com_port_);
 		com_port_ = INVALID_HANDLE_VALUE;
 	}
+
+	if (event_ != INVALID_HANDLE_VALUE) {
+		CloseHandle(event_);
+		event_ = INVALID_HANDLE_VALUE;
+	}
 }
+
 
 #if 0
 BOOL Serial::WriteMessage(HANDLE com_port, std::string message) {
@@ -81,22 +167,6 @@ BOOL Serial::WriteMessage(HANDLE com_port, std::string message) {
 		return FALSE;
 	}
 	return TRUE;
-}
-
-
-Serial::SetCommTimeouts() {
-	// Set Timeouts
-	COMMTIMEOUTS timeouts = { 0 };
-	timeouts.ReadIntervalTimeout = 50;
-	timeouts.ReadTotalTimeoutConstant = 50;
-	timeouts.ReadTotalTimeoutMultiplier = 10;
-	timeouts.WriteTotalTimeoutConstant = 50;
-	timeouts.WriteTotalTimeoutMultiplier = 10;
-	if (!SetCommTimeouts(com_port, &timeouts)) {
-		std::cout << "Error " << GetLastError() << " in SetCommTimeouts" << std::endl;
-		CloseHandle(com_port);
-		return -1;
-	}
 }
 
 Serial::SetReceiveMask() {
@@ -112,24 +182,6 @@ Serial::WaitForCommEvent() {
 	DWORD event_mask;
 	if (!WaitCommEvent(com_port, &event_mask, NULL)) {
 		std::cout << std::endl << "Error " << GetLastError() << " in WaitCommEvent" << std::endl;
-		break;
-	}
-}
-
-
-Serial::Read() {
-	const int BUFFER_SIZE = 1024;
-	CHAR buffer[BUFFER_SIZE + 1] = { 0 };
-	DWORD bytes_read;
-	if (!ReadFile(com_port, &buffer, BUFFER_SIZE, &bytes_read, NULL)) {
-		std::cout << std::endl << "Error " << GetLastError() << " in ReadFile" << std::endl;
-		break;
-	}
-	if (bytes_read > 0) {
-		buffer[bytes_read] = 0;
-		std::cout << buffer;
-	} else {
-		std::cout << std::endl << "Read " << bytes_read << " bytes" << std::endl;
 		break;
 	}
 }

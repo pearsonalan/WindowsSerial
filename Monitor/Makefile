@@ -5,8 +5,12 @@ RC=rc.exe
 PANDOC=pandoc.exe
 
 LINKFLAGS=/nologo /SUBSYSTEM:windows
+DEBUGLINKFLAGS=/DEBUG:FULL /PDB:monitor.pdb
+
 LIBS=user32.lib kernel32.lib gdi32.lib advapi32.lib
+
 CPPFLAGS=/nologo /EHsc /sdl /WX /MDd
+DEBUGCPPFLAGS=/Od /Zi /Fd:monitor.pdb 
 DEFINES=/D "_DEBUG" /D "_WINDOWS" /D "_UNICODE" /D "UNICODE"
 INCLUDES=
 
@@ -14,6 +18,9 @@ APP=monitor.exe
 OBJS=winfx.obj MainWindow.obj MonitorApp.obj PreferencesDialog.obj Registry.obj \
 	Serial.obj StatusWindow.obj TextWindow.obj
 RES=monitor.res
+
+CPPFLAGS=$(CPPFLAGS) $(DEBUGCPPFLAGS)
+LINKFLAGS=$(LINKFLAGS) $(DEBUGLINKFLAGS)
 
 HTML=README.html
 
@@ -26,8 +33,8 @@ docs: $(HTML)
 $(APP): $(OBJS) $(RES)
 	$(LINK) $(LINKFLAGS) /OUT:$(APP) $(OBJS) $(RES) $(LIBS)
 
-MainWindow.obj: MainWindow.cpp MainWindow.h PreferencesDialog.h framework.h winfx.h Resource.h Monitor.h StatusWindow.h TextWindow.h
-MonitorApp.obj: MonitorApp.cpp MainWindow.h framework.h winfx.h Resource.h Monitor.h StatusWindow.h TextWindow.h
+MainWindow.obj: MainWindow.cpp MainWindow.h PreferencesDialog.h framework.h winfx.h Resource.h Monitor.h Serial.h StatusWindow.h TextWindow.h
+MonitorApp.obj: MonitorApp.cpp MainWindow.h framework.h winfx.h Resource.h Monitor.h Serial.h StatusWindow.h TextWindow.h
 PreferencesDialog.obj: PreferencesDialog.cpp PreferencesDialog.h framework.h winfx.h Registry.h Resource.h Monitor.h
 Registry.obj: Registry.cpp framework.h winfx.h Registry.h
 Serial.obj: Serial.cpp framework.h winfx.h Serial.h

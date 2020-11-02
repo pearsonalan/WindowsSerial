@@ -28,3 +28,4 @@
 
 #include <cwchar>
 #include <string>
+#include <functional>

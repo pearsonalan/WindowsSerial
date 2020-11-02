@@ -70,12 +70,17 @@ public:
 	// exit.
 	virtual void beforeTerminate();
 
+	using HandlerFunction = std::function<HRESULT(void)>;
+	HRESULT addEventHandler(HANDLE event, HandlerFunction handler);
+
 protected:
 	HINSTANCE hInst_ = 0;
 	DWORD dwExitCode_  = 0;
 
-	// Array of Handles to wait on in message loop
+	// Array of Handles to wait on in message loop, and a parallel array of
+	// handlers to invoke when one of the handles is signaled.
 	HANDLE wait_handles_[MAXIMUM_WAIT_OBJECTS] = { 0 };
+	HandlerFunction handlers_[MAXIMUM_WAIT_OBJECTS] = { nullptr };
 	DWORD handle_count_ = 0;
 
 	static App* singleton_;

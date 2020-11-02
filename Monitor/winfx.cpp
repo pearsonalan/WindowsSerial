@@ -245,10 +245,6 @@ bool App::translateModelessMessage(MSG* pmsg) {
 	return false;
 }
 
-#define USE_WAIT_FOR_MULTIPLE_OBJECTS 1
-
-#if USE_WAIT_FOR_MULTIPLE_OBJECTS
-
 void App::processMessages() {
 	for (;;) {
 		// winfx::DebugOut(L"Waiting for an event or message");
@@ -262,7 +258,9 @@ void App::processMessages() {
 			wait_result < WAIT_OBJECT_0 + handle_count_) {
 			// One of the handles is signaled
 			int signaled_event_index = wait_result - WAIT_OBJECT_0;
-			winfx::DebugOut(L"Event %d is signaled", signaled_event_index);
+			// winfx::DebugOut(L"Event %d is signaled", signaled_event_index);
+			HandlerFunction handler = handlers_[signaled_event_index];
+			handler();
 		} else if (wait_result == WAIT_OBJECT_0 + handle_count_) {
 			// A windows message is available for processing.
 			// winfx::DebugOut(L"Input events are available");
@@ -293,20 +291,17 @@ void App::processMessages() {
 	}
 }
 
-#else
-
-void App::processMessages() {
-	MSG msg;
-	while (GetMessage(&msg, NULL, 0, 0)) {
-		if (!translateModelessMessage(&msg)) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
+HRESULT App::addEventHandler(HANDLE event, App::HandlerFunction handler) {
+	if (handle_count_ == MAXIMUM_WAIT_OBJECTS) {
+		return E_FAIL;
 	}
+
+	wait_handles_[handle_count_] = event;
+	handlers_[handle_count_] = handler;
+	handle_count_++;
+
+	return S_OK;
 }
-
-#endif
-
 
 App* App::singleton_ = NULL;
 
