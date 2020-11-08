@@ -18,19 +18,23 @@
 #include "Monitor.h"
 
 LRESULT PreferencesDialog::onInitDialog(HWND hwndParam, HWND hwndFocus, LPARAM lParam) {
-	winfx::DebugOut(L"PreferencesDialog::onInitDialog");
+	winfx::DebugOut(L"PreferencesDialog::onInitDialog\n");
 	RegistryKey settings_key = RegistryKey::CurrentUser.openOrCreate(kRegistryKeyName);
 	if (settings_key != RegistryKey::InvalidKey) {
 		std::wstring com_port = settings_key.getStringValueOrEmptyString(L"Port");
-		winfx::DebugOut(L"COM Port is %s", com_port.c_str());
+		int baud_rate = settings_key.getIntegerValueOrDefault(L"BaudRate", 9600);
+		winfx::DebugOut(L"COM Port is %s, baud rate id %d\n", com_port.c_str(), baud_rate);
 		setItemText(IDC_COM_PORT, com_port);
+		setItemInt(IDC_BAUD_RATE, baud_rate);
 	}
 	return TRUE;
 }
 
 void PreferencesDialog::onOk() {
 	std::wstring com_port = getItemText(IDC_COM_PORT);
-	winfx::DebugOut(L"On OK. ComPort = %s", com_port.c_str());
+	int baud_rate = getItemInt(IDC_BAUD_RATE);
+	winfx::DebugOut(L"On OK. ComPort = %s, baud rate = %d\n", com_port.c_str(), baud_rate);
 	RegistryKey settings_key = RegistryKey::CurrentUser.openOrCreate(kRegistryKeyName);
 	settings_key.setStringValue(L"Port", com_port);
+	settings_key.setIntegerValue(L"BaudRate", baud_rate);
 }

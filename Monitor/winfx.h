@@ -196,6 +196,9 @@ public:
 	std::wstring getItemText(int id);
 	void setItemText(int id, const std::wstring& str);
 	
+	int getItemInt(int id);
+	void setItemInt(int id, int value);
+	
 	virtual void onOk() {}
 	virtual void onCancel() {}
 

@@ -174,6 +174,14 @@ void Dialog::setItemText(int id, const std::wstring& str) {
 	}
 }
 
+int Dialog::getItemInt(int id) {
+	return ::GetDlgItemInt(hwnd, id, NULL, TRUE);
+}
+
+void Dialog::setItemInt(int id, int value) {
+	::SetDlgItemInt(hwnd, id, (UINT)value, TRUE);
+}
+
 LRESULT Dialog::onInitDialog(HWND hwndParam, HWND hwndFocus, LPARAM lParam) {
 	return TRUE;
 }

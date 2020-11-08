@@ -11,6 +11,7 @@
 
 #define IDD_PREFERENCES		300
 #define IDC_COM_PORT        301
+#define IDC_BAUD_RATE       302
 
 #define IDD_ABOUTBOX		400
 
