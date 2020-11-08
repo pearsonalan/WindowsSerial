@@ -52,7 +52,10 @@ LRESULT MainWindow::onCreate(HWND hwndParam, LPCREATESTRUCT lpCreateStruct) {
 void MainWindow::onCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
 	switch (id) {
 	case IDM_PREFERENCES:
-		PreferencesDialog(this).doDialogBox();
+		if (PreferencesDialog(this).doDialogBox() == IDOK) {
+			// Preferences may have changed, re-connect to serial port
+			connectSerial();
+		}
 		break;
 
 	case IDM_ABOUT:
@@ -73,7 +76,7 @@ void MainWindow::onPaint(HWND hwnd) {
 }
 
 LRESULT MainWindow::onSize(HWND hwnd, UINT state, int cx, int cy) {
-	winfx::DebugOut(L"onSize state=%d, cx=%d, cy=%d", state, cx, cy);
+	winfx::DebugOut(L"onSize state=%d, cx=%d, cy=%d\n", state, cx, cy);
 	if (state == SIZE_RESTORED) {
 		status_window_.moveWindow(winfx::Point(0, cy-20), winfx::Size(cx, 20), true);
 		text_window_.moveWindow(winfx::Point(0, 0), winfx::Size(cx, cy-20), true);
@@ -82,31 +85,42 @@ LRESULT MainWindow::onSize(HWND hwnd, UINT state, int cx, int cy) {
 }
 
 LRESULT MainWindow::onClose(HWND hwnd) {
-	winfx::DebugOut(L"onClose");
+	winfx::DebugOut(L"onClose\n");
 	saveWindowSize();
 	PostQuitMessage(0);
 	return 0;
 }
 
 void MainWindow::onDestroy(HWND hwnd) {
-	winfx::DebugOut(L"onDestroy");
+	winfx::DebugOut(L"onDestroy\n");
 	saveWindowSize();
 	PostQuitMessage(0);
 }
 
 void MainWindow::connectSerial() {
-	serial_.setComPort(L"\\\\.\\COM4");
-	serial_.setBaudRate(9600);
+	std::wstring com_port = kDefaultComPort;
+	int baud_rate = kDefaultBaudRate;
+
+	RegistryKey settings_key = RegistryKey::CurrentUser.openOrCreate(kRegistryKeyName);
+	if (settings_key != RegistryKey::InvalidKey) {
+		com_port = settings_key.getStringValueOrDefault(kPortRegistryValueName, kDefaultComPort);
+		baud_rate = settings_key.getIntegerValueOrDefault(kBaudRateRegistryValueName, kDefaultBaudRate);
+	}
+
+	std::wstring com_port_filename = std::wstring(L"\\\\.\\") + com_port;
+
+	serial_.setComPort(com_port_filename);
+	serial_.setBaudRate(baud_rate);
 	serial_.setNotificationSink(this);
 
 	HRESULT hr;
 	if (FAILED(hr = serial_.open())) {
-		winfx::DebugOut(L"Could not open serial port. Error %08x", hr);
+		winfx::DebugOut(L"Could not open serial port. Error %08x\n", hr);
 	} 
 }
 
 void MainWindow::onReceivedData(const wchar_t* data, int len) {
-	winfx::DebugOut(L"SER->MW: READ: %s", data);
+	winfx::DebugOut(L"SER->MW: READ: %s\n", data);
 	text_window_.appendData(data, len);
 }
 
@@ -115,7 +129,7 @@ void MainWindow::saveWindowSize() {
 	placement.length = sizeof(WINDOWPLACEMENT);
 	::GetWindowPlacement(hwnd, &placement);
 
-	winfx::DebugOut(L"placement: x=%d, y=%d, cx=%d, cy=%d, show=%d",
+	winfx::DebugOut(L"placement: x=%d, y=%d, cx=%d, cy=%d, show=%d\n",
 		placement.rcNormalPosition.left,
 		placement.rcNormalPosition.top,
 		placement.rcNormalPosition.right - placement.rcNormalPosition.left,

@@ -23,7 +23,7 @@ HRESULT Serial::open() {
 	}
 
 	if (port_file_name_.empty()) {
-		winfx::DebugOut(L"Have not set the comm port");
+		winfx::DebugOut(L"Have not set the comm port\n");
 		return E_INVALIDARG;
 	}
 
@@ -41,7 +41,7 @@ HRESULT Serial::open() {
 	hr = setCommTimeouts();
 	if (FAILED(hr)) return hr;
 
-	winfx::DebugOut(L"Opened com port %s", port_file_name_.c_str());
+	winfx::DebugOut(L"Opened com port %s\n", port_file_name_.c_str());
 
 	event_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
 	overlapped_.hEvent = event_;
@@ -86,7 +86,7 @@ HRESULT Serial::setCommTimeouts() {
 
 HRESULT Serial::startAsyncRead() {
 	if (com_port_ == INVALID_HANDLE_VALUE) {
-		winfx::DebugOut(L"Cannot start Serial read. Com port is not open");
+		winfx::DebugOut(L"Cannot start Serial read. Com port is not open\n");
 		return E_INVALIDARG;
 	}
 
@@ -105,7 +105,7 @@ HRESULT Serial::startAsyncRead() {
 				return S_OK;
 			} else {
 				// A different failure happened.
-				winfx::DebugOut(L"Serial[%s]: Error %08X in ReadFile",
+				winfx::DebugOut(L"Serial[%s]: Error %08X in ReadFile\n",
 								port_file_name_.c_str(), error_code);
 				return HRESULT_FROM_WIN32(error_code);
 			}
@@ -126,7 +126,7 @@ HRESULT Serial::onAsyncReadCompleted() {
 }
 
 void Serial::processReadBuffer(DWORD byte_count) {
-	winfx::DebugOut(L"Serial[%s]: read %d bytes", port_file_name_.c_str(), byte_count);
+	winfx::DebugOut(L"Serial[%s]: read %d bytes\n", port_file_name_.c_str(), byte_count);
 
 	// Convert the bytes to Unicode wide chars
 	wchar_t buffer[kReadBufferSize + 1];
@@ -144,7 +144,7 @@ void Serial::processReadBuffer(DWORD byte_count) {
 
 HRESULT Serial::error(const std::wstring& message) {
 	DWORD error = ::GetLastError();
-	winfx::DebugOut(L"Serial[%s]: %s: Error %08X",
+	winfx::DebugOut(L"Serial[%s]: %s: Error %08X\n",
 					port_file_name_.c_str(), message.c_str(), error);
 	return HRESULT_FROM_WIN32(error);
 }

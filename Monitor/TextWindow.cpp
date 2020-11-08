@@ -82,9 +82,9 @@ void TextWindow::onPaint(HWND hwnd) {
 }
 
 LRESULT TextWindow::onSize(HWND hwnd, UINT state, int cx, int cy) {
-	winfx::DebugOut(L"TextWindow: onSize state=%d, cx=%d, cy=%d", state, cx, cy);
+	winfx::DebugOut(L"TextWindow: onSize state=%d, cx=%d, cy=%d\n", state, cx, cy);
 	int line_count = getVisibleLineCount(cy);
-	winfx::DebugOut(L"TextWindow: Line size = %d, line count = %d", line_height_, line_count);
+	winfx::DebugOut(L"TextWindow: Line size = %d, line count = %d\n", line_height_, line_count);
 	setBufferLines(line_count);
 	return 0;
 }
@@ -110,7 +110,7 @@ int TextWindow::getVisibleLineCount(int window_height) {
 }
 
 void TextWindow::setBufferLines(int lines) {
-	winfx::DebugOut(L"TextWindow: setting line count to %d ", lines);
+	winfx::DebugOut(L"TextWindow: setting line count to %d\n", lines);
 	buffer_lines_ = lines;
 	while (lines_.size() > buffer_lines_) {
 		lines_.pop_front();
@@ -118,7 +118,7 @@ void TextWindow::setBufferLines(int lines) {
 }
 
 void TextWindow::appendData(const wchar_t* data, int len) {
-	winfx::DebugOut(L"TextWindow appending %d chars", len);
+	winfx::DebugOut(L"TextWindow appending %d chars\n", len);
 
 	wchar_t line[kMaxLineLength + 1];
 
@@ -133,7 +133,13 @@ void TextWindow::appendData(const wchar_t* data, int len) {
 			// Eat \r characters... ignore CR-LF line endings
 		} else {
 			if (c < kMaxLineLength) {
-				line[c] = *p;
+				if (isprint(*p)) {
+					line[c] = *p;
+				} else {
+					// Use a box character to represent an unprintable
+					// character.
+					line[c] = L'\u2B1C';
+				}
 				c++;
 			} else {
 				// eat the character

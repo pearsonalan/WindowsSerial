@@ -15,4 +15,13 @@
 
 #pragma once
 
+// Name of the registry key under HKEY_CURRENT_USER
 constexpr wchar_t kRegistryKeyName[] = L"Software\\SerialMonitor";
+
+// Names for registry values
+constexpr wchar_t kPortRegistryValueName[] = L"Port";
+constexpr wchar_t kBaudRateRegistryValueName[] = L"BaudRate";
+
+// Default settings
+constexpr wchar_t kDefaultComPort[] = L"COM4";
+constexpr int kDefaultBaudRate = 9600;

@@ -93,6 +93,15 @@ std::wstring RegistryKey::getStringValueOrEmptyString(const std::wstring& value_
 	return result;
 }
 
+std::wstring RegistryKey::getStringValueOrDefault(const std::wstring& value_name,
+		const std::wstring& default_value) const {
+	std::wstring result;
+	if (getStringValue(value_name, &result) != ERROR_SUCCESS) {
+		return default_value;
+	}
+	return result;
+}
+
 LSTATUS RegistryKey::setStringValue(const std::wstring& value_name, const std::wstring& value) {
 	if (status_ != ERROR_SUCCESS) {
 		winfx::DebugOut(L"calling setStringValue on key with bad status %d", status_);

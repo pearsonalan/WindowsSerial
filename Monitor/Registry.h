@@ -50,6 +50,11 @@ public:
 	// error or data type mismatch occurs.
 	std::wstring getStringValueOrEmptyString(const std::wstring& value_name) const;
 
+	// Returns the string value (REG_SZ) of the given value or returns the given default
+	// string if an error or data type mismatch occurs.
+	std::wstring getStringValueOrDefault(const std::wstring& value_name,
+		const std::wstring& default_value) const;
+
 	// Sets the given string value (REG_SZ).
 	LSTATUS setStringValue(const std::wstring& value_name, const std::wstring& value);
 
