@@ -127,6 +127,9 @@ public:
 
 	void destroy() { ::DestroyWindow(hwnd); }
 
+	HDC getDC() { return ::GetDC(hwnd); }
+	int releaseDC(HDC hdc) { return ::ReleaseDC(hwnd, hdc); }
+
 	Rect getClientRect() { Rect r; ::GetClientRect(hwnd, (LPRECT)r); return r; }
 	Rect getWindowRect() { Rect r; ::GetWindowRect(hwnd, (LPRECT)r); return r; }
 		

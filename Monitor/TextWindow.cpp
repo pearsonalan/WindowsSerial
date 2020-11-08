@@ -15,36 +15,147 @@
 
 #include "TextWindow.h"
 
+constexpr int kMaxLineLength = 255;
+
+TextWindow::TextWindow(winfx::Window* parent_window) :
+	winfx::Window(winfx::loadString(IDC_TEXT_WINDOW), parent_window) {
+	lines_.push_back(std::wstring());
+}
+
 void TextWindow::modifyWndClass(WNDCLASSEXW& wc) {
 	wc.hCursor = ::LoadCursor(NULL, IDC_IBEAM);
 	wc.hbrBackground = (HBRUSH)(COLOR_BTNSHADOW + 1);
 }
 
+LRESULT TextWindow::onCreate(HWND hwndParam, LPCREATESTRUCT lpCreateStruct) {
+	winfx::Rect rect = getClientRect();
+	setBufferLines(getVisibleLineCount(rect.height()));
+	return winfx::Window::onCreate(hwndParam, lpCreateStruct);
+}
+	
 LRESULT TextWindow::handleWindowMessage(HWND hwndParam, UINT uMsg, 
 										WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 		HANDLE_MSG(hwndParam, WM_PAINT, onPaint);
+		HANDLE_MSG(hwndParam, WM_SIZE, onSize);
 	}
 	return Window::handleWindowMessage(hwndParam, uMsg, wParam, lParam);
 }
+
+// Create the font used to draw the text
+HFONT TextWindow::createFont() {
+	return CreateFont(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, FIXED_PITCH, TEXT("Consolas"));
+}
+
+constexpr int kBorderHeight = 0;
+constexpr int kBorderWidth = 2;
 
 void TextWindow::onPaint(HWND hwnd) {
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hwnd, &ps);
 
-	HFONT hFont = CreateFont(18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		DEFAULT_QUALITY, FIXED_PITCH, TEXT("Consolas"));
+	HFONT font = createFont();
 
-
-	// Draw the status message
-	SelectObject(hdc, hFont);
+	// Draw the content of the text window
+	SelectObject(hdc, font);
 	SetTextColor(hdc, RGB(0, 0, 0));
 	SetBkMode(hdc, TRANSPARENT); 
 
-	DrawTextW(hdc, L"Hello World", -1, (LPRECT)winfx::Rect(10, 10, 300, 30),
-		DT_NOCLIP);
+	winfx::Rect rect = getClientRect();
 
-	DeleteObject(hFont);
+	int line_number = 0;
+	const int line_height = getLineHeight();
+	for (const std::wstring& line : lines_) {
+		DrawTextW(hdc, line.c_str(), -1, 
+			(LPRECT)winfx::Rect(kBorderWidth,
+							    rect.height() + (line_number - buffer_lines_) * line_height,
+								rect.width() - 2 * kBorderWidth,
+								line_height),
+			DT_NOCLIP);
+		line_number++;
+	}
+
+	DeleteObject(font);
 	EndPaint(hwnd, &ps);
+}
+
+LRESULT TextWindow::onSize(HWND hwnd, UINT state, int cx, int cy) {
+	winfx::DebugOut(L"TextWindow: onSize state=%d, cx=%d, cy=%d", state, cx, cy);
+	int line_count = getVisibleLineCount(cy);
+	winfx::DebugOut(L"TextWindow: Line size = %d, line count = %d", line_height_, line_count);
+	setBufferLines(line_count);
+	return 0;
+}
+
+int TextWindow::getLineHeight() {
+#if 0
+	// If font size could be changed, compute height based on font
+	if (line_height_ == 0) {
+		HDC hdc = getDC();
+		HFONT font = createFont();
+		SelectObject(hdc, font);
+		SIZE size;
+		GetTextExtentPoint32W(hdc, L"M", 1, &size);
+		releaseDC(hdc);
+		line_height_ = size.cy;
+	}
+#endif
+	return line_height_;
+}
+
+int TextWindow::getVisibleLineCount(int window_height) {
+	return (window_height - 2 * kBorderHeight + getLineHeight() - 1) / getLineHeight();
+}
+
+void TextWindow::setBufferLines(int lines) {
+	winfx::DebugOut(L"TextWindow: setting line count to %d ", lines);
+	buffer_lines_ = lines;
+	while (lines_.size() > buffer_lines_) {
+		lines_.pop_front();
+	}
+}
+
+void TextWindow::appendData(const wchar_t* data, int len) {
+	winfx::DebugOut(L"TextWindow appending %d chars", len);
+
+	wchar_t line[kMaxLineLength + 1];
+
+	// append data onto line until a newline char is reached
+	int c = 0;
+	for (const wchar_t* p = data; p - data < len; p++) {
+		if (*p == L'\n') {
+			appendTextToCurrentLine(std::wstring(line, c));
+			advanceLine();
+			c = 0;
+		} else if (*p == L'\r') {
+			// Eat \r characters... ignore CR-LF line endings
+		} else {
+			if (c < kMaxLineLength) {
+				line[c] = *p;
+				c++;
+			} else {
+				// eat the character
+			}
+		}
+	}
+
+	if (c > 0) {
+		appendTextToCurrentLine(std::wstring(line, c));
+	}
+}
+
+void TextWindow::appendTextToCurrentLine(const std::wstring& text) {
+	std::wstring& current_line = lines_.back();
+	current_line.append(text);
+	::InvalidateRect(hwnd, NULL, TRUE);
+}
+
+void TextWindow::advanceLine() {
+	lines_.push_back(std::wstring());
+	while (lines_.size() > buffer_lines_) {
+		lines_.pop_front();
+	}
+	::InvalidateRect(hwnd, NULL, TRUE);
 }

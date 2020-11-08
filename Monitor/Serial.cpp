@@ -128,14 +128,17 @@ HRESULT Serial::onAsyncReadCompleted() {
 void Serial::processReadBuffer(DWORD byte_count) {
 	winfx::DebugOut(L"Serial[%s]: read %d bytes", port_file_name_.c_str(), byte_count);
 
+	// Convert the bytes to Unicode wide chars
 	wchar_t buffer[kReadBufferSize + 1];
-
 	int chars_converted = MultiByteToWideChar(437, MB_PRECOMPOSED,
 		(LPCCH)read_buffer_, byte_count,
 		buffer, kReadBufferSize + 1);
 	if (chars_converted > 0) {
+		// Null terminate string
 		buffer[chars_converted] = L'\0';
-		winfx::DebugOut(L"READ: %s", buffer);
+		if (notification_sink_) {
+			notification_sink_->onReceivedData(buffer, chars_converted);
+		}
 	}
 }
 

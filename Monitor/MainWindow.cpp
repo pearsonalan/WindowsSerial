@@ -96,12 +96,18 @@ void MainWindow::onDestroy(HWND hwnd) {
 
 void MainWindow::connectSerial() {
 	serial_.setComPort(L"\\\\.\\COM4");
-	serial_.setBaudRate(115200);
+	serial_.setBaudRate(9600);
+	serial_.setNotificationSink(this);
 
 	HRESULT hr;
 	if (FAILED(hr = serial_.open())) {
 		winfx::DebugOut(L"Could not open serial port. Error %08x", hr);
-	}
+	} 
+}
+
+void MainWindow::onReceivedData(const wchar_t* data, int len) {
+	winfx::DebugOut(L"SER->MW: READ: %s", data);
+	text_window_.appendData(data, len);
 }
 
 void MainWindow::saveWindowSize() {

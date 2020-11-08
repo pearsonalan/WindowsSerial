@@ -28,4 +28,6 @@
 
 #include <cwchar>
 #include <string>
+#include <vector>
+#include <deque>
 #include <functional>

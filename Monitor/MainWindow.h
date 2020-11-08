@@ -22,12 +22,13 @@
 #include "StatusWindow.h"
 #include "TextWindow.h"
 
-class MainWindow : public winfx::Window {
+class MainWindow : public winfx::Window, public SerialNotificationSink {
 public:
 	MainWindow() : 
 		winfx::Window(winfx::loadString(IDS_APP_CLASS), winfx::loadString(IDS_APP_TITLE)),
 		status_window_(this),
 		text_window_(this) {}
+	virtual ~MainWindow() {}
 
 	void modifyWndClass(WNDCLASSEXW& wc) override;
 	winfx::Size getDefaultWindowSize() override;
@@ -37,6 +38,8 @@ public:
 	LRESULT onCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct) override;
 	LRESULT onClose(HWND hwnd) override;
 
+	void onReceivedData(const wchar_t* data, int len) override;
+	
 protected:
 	void connectSerial();
 

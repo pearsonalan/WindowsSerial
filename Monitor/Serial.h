@@ -19,6 +19,12 @@
 
 constexpr int kReadBufferSize = 256;
 
+class SerialNotificationSink {
+public:
+	virtual ~SerialNotificationSink() {}
+	virtual void onReceivedData(const wchar_t* data, int len) = 0;
+};
+
 class Serial {
 public:
 	Serial(int baud_rate = 9600) : baud_rate_(baud_rate) {
@@ -37,6 +43,10 @@ public:
 
 	void setBaudRate(int baud_rate) {
 		baud_rate_ = baud_rate;
+	}
+
+	void setNotificationSink(SerialNotificationSink* sink) {
+		notification_sink_ = sink;
 	}
 
 	// Open the serial com port
@@ -74,5 +84,9 @@ private:
 	OVERLAPPED overlapped_;
 	HANDLE event_ = INVALID_HANDLE_VALUE;
 
+	// Async reads go into this buffer
 	BYTE read_buffer_[kReadBufferSize] = { 0 };
+
+	// Callback notification interface
+	SerialNotificationSink* notification_sink_ = nullptr;
 };
