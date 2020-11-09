@@ -23,14 +23,14 @@ RegistryKey::RegistryKey(const RegistryKey& parent_key, const std::wstring& path
 	HKEY hkey = 0;
 	status_ = RegOpenKeyExW(parent_key.key(), path.c_str(), 0, sam, &hkey);
 	if (status_ == ERROR_SUCCESS) {
-		winfx::DebugOut(L"Opened key %08x", hkey);
+		winfx::DebugOut(L"Opened key %08x\n", hkey);
 		hkey_ = hkey;
 	}
 }
 
 RegistryKey::~RegistryKey() {
 	if (hkey_ != 0 && hkey_ != HKEY_LOCAL_MACHINE && hkey_ != HKEY_CURRENT_USER) {
-		winfx::DebugOut(L"Closing key %08x", hkey_);
+		winfx::DebugOut(L"Closing key %08x\n", hkey_);
 		RegCloseKey(hkey_);
 		hkey_ = 0;
 		status_ = ERROR_INVALID_HANDLE;
@@ -46,9 +46,9 @@ RegistryKey RegistryKey::openOrCreate(const std::wstring& key_name, REGSAM sam) 
 	status = RegCreateKeyExW(hkey_, key_name.c_str(), 0, NULL, REG_OPTION_NON_VOLATILE,
 							 sam, NULL, &hkey, &disposition);
 	if (status == ERROR_SUCCESS) {
-		winfx::DebugOut(L"Opened key %08x", hkey);
+		winfx::DebugOut(L"Opened key %08x\n", hkey);
 	} else {
-		winfx::DebugOut(L"Error in openOrCreate: %d", status);
+		winfx::DebugOut(L"Error in openOrCreate: %d\n", status);
 	}
 
 	return RegistryKey(hkey, status);
@@ -56,7 +56,7 @@ RegistryKey RegistryKey::openOrCreate(const std::wstring& key_name, REGSAM sam) 
 
 LSTATUS RegistryKey::getStringValue(const std::wstring& value_name, std::wstring* result) const {
 	if (status_ != ERROR_SUCCESS) {
-		winfx::DebugOut(L"calling getStringValue on key with bad status %d", status_);
+		winfx::DebugOut(L"calling getStringValue on key with bad status %d\n", status_);
 		return status_;
 	}
 
@@ -65,17 +65,17 @@ LSTATUS RegistryKey::getStringValue(const std::wstring& value_name, std::wstring
 	LSTATUS status = RegQueryValueExW(hkey_, value_name.c_str(), NULL, &type, 
 									  reinterpret_cast<LPBYTE>(data), &len);
 	if (status != ERROR_SUCCESS) {
-		winfx::DebugOut(L"Registry::getStringValue: Error in RegQueryValueExW: %d", status);
+		winfx::DebugOut(L"Registry::getStringValue: Error in RegQueryValueExW: %d\n", status);
 		return status;	
 	}	
 
 	if (type != REG_SZ) {
-		winfx::DebugOut(L"Registry::getStringValue: Value is not a REG_SZ");
+		winfx::DebugOut(L"Registry::getStringValue: Value is not a REG_SZ\n");
 		return ERROR_DATATYPE_MISMATCH;
 	}
 
 	if (len < 0 || len >= sizeof(data)) {
-		winfx::DebugOut(L"Registry::getStringValue: Invalid Size");
+		winfx::DebugOut(L"Registry::getStringValue: Invalid Size\n");
 		return ERROR_INCORRECT_SIZE;
 	}
 
@@ -104,7 +104,7 @@ std::wstring RegistryKey::getStringValueOrDefault(const std::wstring& value_name
 
 LSTATUS RegistryKey::setStringValue(const std::wstring& value_name, const std::wstring& value) {
 	if (status_ != ERROR_SUCCESS) {
-		winfx::DebugOut(L"calling setStringValue on key with bad status %d", status_);
+		winfx::DebugOut(L"calling setStringValue on key with bad status %d\n", status_);
 		return status_;
 	}
 
@@ -112,14 +112,14 @@ LSTATUS RegistryKey::setStringValue(const std::wstring& value_name, const std::w
 									reinterpret_cast<const BYTE*>(value.c_str()), 
 									(value.length() + 1) * sizeof(wchar_t));
 	if (status != ERROR_SUCCESS) {
-		winfx::DebugOut(L"Error setting reg value: %d", status);
+		winfx::DebugOut(L"Error setting reg value: %d\n", status);
 	}
 	return status;
 }
 
 LSTATUS RegistryKey::getIntegerValue(const std::wstring& value_name, DWORD* result) const {
 	if (status_ != ERROR_SUCCESS) {
-		winfx::DebugOut(L"calling getIntegerValue on key with bad status %d", status_);
+		winfx::DebugOut(L"calling getIntegerValue on key with bad status %d\n", status_);
 		return status_;
 	}
 
@@ -127,17 +127,17 @@ LSTATUS RegistryKey::getIntegerValue(const std::wstring& value_name, DWORD* resu
 	LSTATUS status = RegQueryValueExW(hkey_, value_name.c_str(), NULL, &type, 
 									  reinterpret_cast<LPBYTE>(&value), &len);
 	if (status != ERROR_SUCCESS) {
-		winfx::DebugOut(L"Registry::getIntegerValue: Error in RegQueryValueExW: %d", status);
+		winfx::DebugOut(L"Registry::getIntegerValue: Error in RegQueryValueExW: %d\n", status);
 		return status;	
 	}	
 
 	if (type != REG_DWORD) {
-		winfx::DebugOut(L"Registry::getIntegerValue: Value is not a REG_DWORD");
+		winfx::DebugOut(L"Registry::getIntegerValue: Value is not a REG_DWORD\n");
 		return ERROR_DATATYPE_MISMATCH;
 	}
 
 	if (len != sizeof(DWORD)) {
-		winfx::DebugOut(L"Registry::getIntegerValue: Invalid Size");
+		winfx::DebugOut(L"Registry::getIntegerValue: Invalid Size\n");
 		return ERROR_INCORRECT_SIZE;
 	}
 
@@ -147,7 +147,7 @@ LSTATUS RegistryKey::getIntegerValue(const std::wstring& value_name, DWORD* resu
 
 LSTATUS RegistryKey::setIntegerValue(const std::wstring& value_name, DWORD value) {
 	if (status_ != ERROR_SUCCESS) {
-		winfx::DebugOut(L"calling setIntegerValue on key with bad status %d", status_);
+		winfx::DebugOut(L"calling setIntegerValue on key with bad status %d\n", status_);
 		return status_;
 	}
 
@@ -155,7 +155,7 @@ LSTATUS RegistryKey::setIntegerValue(const std::wstring& value_name, DWORD value
 									reinterpret_cast<const BYTE*>(&value), 
 									sizeof(DWORD));
 	if (status != ERROR_SUCCESS) {
-		winfx::DebugOut(L"Error setting reg value: %d", status);
+		winfx::DebugOut(L"Error setting reg value: %d\n", status);
 	}
 	return status;
 }
