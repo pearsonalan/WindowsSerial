@@ -38,10 +38,13 @@ public:
 	LRESULT onCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct) override;
 	LRESULT onClose(HWND hwnd) override;
 
+	// Callbacks for SerialNotificationSink
 	void onReceivedData(const wchar_t* data, int len) override;
+	void onDisconnected() override;
 	
 protected:
 	void connectSerial();
+	void disconnectSerial();
 
 	// Save window size so it can be reopened to the same size
 	void saveWindowSize();

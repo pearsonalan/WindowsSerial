@@ -65,6 +65,14 @@ void MainWindow::onCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
 	case IDM_EXIT:
 		destroy();
 		break;
+
+	case IDM_CONNECT:
+		connectSerial();
+		break;
+
+	case IDM_DISCONNECT:
+		disconnectSerial();
+		break;
 	}
 }
 
@@ -126,10 +134,23 @@ void MainWindow::connectSerial() {
 	}
 }
 
+void MainWindow::disconnectSerial() {
+	// Disconnect triggered by user.
+	serial_.close();
+	status_window_.setStatusMessage(L"Disconnected");
+}
+
 void MainWindow::onReceivedData(const wchar_t* data, int len) {
-	winfx::DebugOut(L"SER->MW: READ: %s\n", data);
+	// winfx::DebugOut(L"SER->MW: READ: %s\n", data);
 	text_window_.appendData(data, len);
 }
+
+void MainWindow::onDisconnected() {
+	// Disconnect notificaction from I/O failure.
+	winfx::DebugOut(L"MainWindow notified of disconnect");
+	serial_.close();
+	status_window_.setStatusMessage(L"Disconnected");
+}	
 
 void MainWindow::saveWindowSize() {
 	WINDOWPLACEMENT placement;

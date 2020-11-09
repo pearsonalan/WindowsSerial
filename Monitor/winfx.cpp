@@ -307,8 +307,27 @@ HRESULT App::addEventHandler(HANDLE event, App::HandlerFunction handler) {
 	wait_handles_[handle_count_] = event;
 	handlers_[handle_count_] = handler;
 	handle_count_++;
+	winfx::DebugOut(L"Added handler [%08X] to app. New handle count = %d\n", (intptr_t)event, handle_count_);
 
 	return S_OK;
+}
+
+void App::removeEventHandler(HANDLE event) {
+	// Iterate through the array to find the handle to remove
+	for (int i = 0; i < handle_count_; i++) {
+		if (wait_handles_[i] == event) {
+			// move all of the handles after the i-th handle down one
+			for (int j = i; j + 1 < handle_count_; j++) {
+				wait_handles_[j] = wait_handles_[j+1];
+				handlers_[j] = handlers_[j+1];
+			}
+			wait_handles_[handle_count_ - 1] = 0;
+			handlers_[handle_count_ - 1] = nullptr;
+			handle_count_--;
+			winfx::DebugOut(L"Removed handler [%08X] from app. New handle count = %d\n", (intptr_t)event, handle_count_);
+			break;
+		}
+	}
 }
 
 App* App::singleton_ = NULL;

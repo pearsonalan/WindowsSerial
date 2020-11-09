@@ -72,6 +72,7 @@ public:
 
 	using HandlerFunction = std::function<HRESULT(void)>;
 	HRESULT addEventHandler(HANDLE event, HandlerFunction handler);
+	void removeEventHandler(HANDLE event);
 
 protected:
 	HINSTANCE hInst_ = 0;

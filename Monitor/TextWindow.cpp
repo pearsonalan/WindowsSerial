@@ -118,9 +118,9 @@ void TextWindow::setBufferLines(int lines) {
 }
 
 void TextWindow::appendData(const wchar_t* data, int len) {
-	winfx::DebugOut(L"TextWindow appending %d chars\n", len);
-
 	wchar_t line[kMaxLineLength + 1];
+
+	// winfx::DebugOut(L"TextWindow appending %d chars\n", len);
 
 	// append data onto line until a newline char is reached
 	int c = 0;

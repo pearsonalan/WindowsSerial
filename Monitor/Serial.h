@@ -23,6 +23,7 @@ class SerialNotificationSink {
 public:
 	virtual ~SerialNotificationSink() {}
 	virtual void onReceivedData(const wchar_t* data, int len) = 0;
+	virtual void onDisconnected() = 0;
 };
 
 class Serial {

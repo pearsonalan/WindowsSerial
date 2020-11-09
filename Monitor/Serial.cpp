@@ -99,7 +99,7 @@ HRESULT Serial::startAsyncRead() {
 			// Read was successful. Process the data.
 			processReadBuffer(bytes_transferred);
 		} else {
-			DWORD error_code = GetLastError();
+			DWORD error_code = ::GetLastError();
 			if (error_code == ERROR_IO_PENDING) {
 				// The async operation is pending.
 				return S_OK;
@@ -107,6 +107,9 @@ HRESULT Serial::startAsyncRead() {
 				// A different failure happened.
 				winfx::DebugOut(L"Serial[%s]: Error %08X in ReadFile\n",
 								port_file_name_.c_str(), error_code);
+				if (notification_sink_) {
+					notification_sink_->onDisconnected();
+				}
 				return HRESULT_FROM_WIN32(error_code);
 			}
 		}
@@ -120,9 +123,17 @@ HRESULT Serial::onAsyncReadCompleted() {
 		if (bytes_transferred > 0) {
 			processReadBuffer(bytes_transferred);
 		}
+	} else {
+		DWORD error_code = ::GetLastError();
+		winfx::DebugOut(L"Serial[%s]: Error %08X from GetOverlappedResult\n",
+						port_file_name_.c_str(), error_code);
+		if (notification_sink_) {
+			notification_sink_->onDisconnected();
+		}
+		return HRESULT_FROM_WIN32(error_code);
 	}
-	startAsyncRead();
-	return S_OK;
+
+	return startAsyncRead();
 }
 
 void Serial::processReadBuffer(DWORD byte_count) {
@@ -156,6 +167,7 @@ void Serial::close() {
 	}
 
 	if (event_ != INVALID_HANDLE_VALUE) {
+		winfx::App::getSingleton().removeEventHandler(event_);
 		CloseHandle(event_);
 		event_ = INVALID_HANDLE_VALUE;
 	}
