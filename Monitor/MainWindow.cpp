@@ -107,16 +107,23 @@ void MainWindow::connectSerial() {
 		baud_rate = settings_key.getIntegerValueOrDefault(kBaudRateRegistryValueName, kDefaultBaudRate);
 	}
 
-	std::wstring com_port_filename = std::wstring(L"\\\\.\\") + com_port;
+	status_window_.setComPort(com_port);
+	status_window_.setBaudRate(baud_rate);
 
+	std::wstring com_port_filename = std::wstring(L"\\\\.\\") + com_port;
 	serial_.setComPort(com_port_filename);
 	serial_.setBaudRate(baud_rate);
 	serial_.setNotificationSink(this);
 
 	HRESULT hr;
 	if (FAILED(hr = serial_.open())) {
-		winfx::DebugOut(L"Could not open serial port. Error %08x\n", hr);
-	} 
+		wchar_t buffer[80];
+		swprintf_s(buffer, L"Could not open serial port. Error %08x", hr);
+		status_window_.setStatusMessage(buffer);
+		winfx::DebugOut(L"%s\n", buffer);
+	} else {
+		status_window_.setStatusMessage(L"Connected");
+	}
 }
 
 void MainWindow::onReceivedData(const wchar_t* data, int len) {

@@ -149,6 +149,14 @@ public:
 		return ::SetWindowPos(hwnd, hwndBefore, x, y, cx, cy, uiFlags); 
 	}
 
+	void invalidateRect(BOOL repaint=TRUE) {
+		::InvalidateRect(hwnd, NULL, repaint);
+	}
+
+	void invalidateRect(Rect rect, BOOL repaint=TRUE) {
+		::InvalidateRect(hwnd, (LPRECT)rect, repaint);
+	}
+
 	bool postMessage(UINT msg, WPARAM wparam, LPARAM lparam) { 
 		return (bool) ::PostMessage(hwnd, msg, wparam, lparam);
 	}

@@ -155,7 +155,7 @@ void TextWindow::appendData(const wchar_t* data, int len) {
 void TextWindow::appendTextToCurrentLine(const std::wstring& text) {
 	std::wstring& current_line = lines_.back();
 	current_line.append(text);
-	::InvalidateRect(hwnd, NULL, TRUE);
+	invalidateRect();
 }
 
 void TextWindow::advanceLine() {
@@ -163,5 +163,5 @@ void TextWindow::advanceLine() {
 	while (lines_.size() > buffer_lines_) {
 		lines_.pop_front();
 	}
-	::InvalidateRect(hwnd, NULL, TRUE);
+	invalidateRect();
 }

@@ -28,28 +28,72 @@ LRESULT StatusWindow::handleWindowMessage(HWND hwndParam, UINT uMsg,
 	return Window::handleWindowMessage(hwndParam, uMsg, wParam, lParam);
 }
 
+constexpr int kSettingsRectWidth = 200;
+constexpr int kSettingsRectHeight = 16;
+constexpr int kSettingsRectOffset = 2;
+
 void StatusWindow::onPaint(HWND hwnd) {
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hwnd, &ps);
 	winfx::Rect client_rect = getClientRect();
 
-	HFONT hFont = CreateFont(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+	HFONT status_font = CreateFont(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, VARIABLE_PITCH, TEXT("Arial"));
+
+	HFONT settings_font = CreateFont(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
 		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
 		DEFAULT_QUALITY, VARIABLE_PITCH, TEXT("Arial"));
 
 	// Draw the status message
-	SelectObject(hdc, hFont);
+	HGDIOBJ original_font = SelectObject(hdc, status_font);
 	SetTextColor(hdc, RGB(0, 0, 0));
 	SetBkMode(hdc, TRANSPARENT); 
-
-	DrawTextW(hdc, L"Status message", -1, (LPRECT)winfx::Rect(1, 1, 30, 18),
+	DrawTextW(hdc, status_message_.c_str(), -1, (LPRECT)winfx::Rect(1, 1, 30, 18),
 		DT_NOCLIP);
 
-	DrawEdge(hdc, 
-		(LPRECT)winfx::Rect(client_rect.width() - 200 - 4, 2, 
-							client_rect.width() - 2, 18), 
-		EDGE_SUNKEN, BF_RECT);
+	// Draw the settings box
+	winfx::Rect settings_rect(client_rect.width() - kSettingsRectWidth - kSettingsRectOffset, 
+							  kSettingsRectOffset, 
+							  client_rect.width() - kSettingsRectOffset, 
+							  kSettingsRectOffset + kSettingsRectHeight); 
+	DrawEdge(hdc, (LPRECT)settings_rect, EDGE_SUNKEN, BF_RECT); 
+	SelectObject(hdc, settings_font);
+	
+	// Draw com port setting
+	// Adjust settings rect to be position of com port
+	settings_rect.left += 6;
+	settings_rect.top += 1;
+	settings_rect.bottom -= 1;
+	settings_rect.right = settings_rect.left + 80;
+	DrawTextW(hdc, com_port_.c_str(), -1, (LPRECT)settings_rect, DT_NOCLIP);
 
-	DeleteObject(hFont);
+	// Draw baud rate settings
+	// Adjust settings rect to be position of baud_rate
+	settings_rect.left = settings_rect.right + 20;
+	settings_rect.right = settings_rect.left + 80;
+	DrawTextW(hdc, baud_rate_.c_str(), -1, (LPRECT)settings_rect, DT_NOCLIP);
+
+	SelectObject(hdc, original_font);
+
+	DeleteObject(status_font);
+	DeleteObject(settings_font);
 	EndPaint(hwnd, &ps);
+}
+
+void StatusWindow::setStatusMessage(const std::wstring& status_message) {
+	status_message_ = status_message;
+	invalidateRect();
+}
+
+void StatusWindow::setComPort(const std::wstring& com_port) {
+	com_port_ = com_port;
+	invalidateRect();
+}
+
+void StatusWindow::setBaudRate(int baud_rate) {
+	wchar_t buffer[16];
+	_itow_s(baud_rate, buffer, 10);
+	baud_rate_ = buffer;
+	invalidateRect();
 }

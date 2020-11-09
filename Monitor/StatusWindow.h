@@ -27,6 +27,14 @@ public:
 	void modifyWndClass(WNDCLASSEXW& wc) override;
 	LRESULT handleWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 
+	void setStatusMessage(const std::wstring& status_message);
+	void setComPort(const std::wstring& com_port);
+	void setBaudRate(int baud_rate);
+
 protected:
 	void onPaint(HWND hwnd);
+
+	std::wstring status_message_;
+	std::wstring com_port_;
+	std::wstring baud_rate_;
 };
