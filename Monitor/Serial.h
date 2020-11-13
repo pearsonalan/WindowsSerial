@@ -22,18 +22,20 @@ constexpr int kReadBufferSize = 256;
 class SerialNotificationSink {
 public:
 	virtual ~SerialNotificationSink() {}
-	virtual void onReceivedData(const wchar_t* data, int len) = 0;
+	virtual void onReceivedData(const BYTE* data, int len) = 0;
 	virtual void onDisconnected() = 0;
 };
 
 class Serial {
 public:
 	Serial(int baud_rate = 9600) : baud_rate_(baud_rate) {
-		::ZeroMemory(&overlapped_, sizeof(OVERLAPPED));
+		::ZeroMemory(&read_overlapped_, sizeof(OVERLAPPED));
+		::ZeroMemory(&write_overlapped_, sizeof(OVERLAPPED));
 	}
 	Serial(const std::wstring& port_file_name, int baud_rate = 9600) :
 		port_file_name_(port_file_name), baud_rate_(baud_rate) {
-		::ZeroMemory(&overlapped_, sizeof(OVERLAPPED));
+		::ZeroMemory(&read_overlapped_, sizeof(OVERLAPPED));
+		::ZeroMemory(&write_overlapped_, sizeof(OVERLAPPED));
 	}
 
 	virtual ~Serial() { close(); }
@@ -60,6 +62,16 @@ public:
 	// Invoked when an async read completes successfully
 	HRESULT onAsyncReadCompleted();
 
+	// Write some data to the COM port
+	HRESULT write(const BYTE* data, int len);
+
+	// Invoked when an async write completes successfully
+	HRESULT onAsyncWriteCompleted();
+
+	// Returns true if the serial port is connected
+	bool isConnected();
+
+	// Close the COM port
 	void close();
 
 private:
@@ -82,8 +94,11 @@ private:
 	int baud_rate_ = 0;
 
 	HANDLE com_port_ = INVALID_HANDLE_VALUE;
-	OVERLAPPED overlapped_;
-	HANDLE event_ = INVALID_HANDLE_VALUE;
+	OVERLAPPED read_overlapped_;
+	HANDLE read_event_ = INVALID_HANDLE_VALUE;
+	OVERLAPPED write_overlapped_;
+	HANDLE write_event_ = INVALID_HANDLE_VALUE;
+	bool write_active_ = false;
 
 	// Async reads go into this buffer
 	BYTE read_buffer_[kReadBufferSize] = { 0 };

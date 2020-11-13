@@ -43,10 +43,13 @@ HRESULT Serial::open() {
 
 	winfx::DebugOut(L"Opened com port %s\n", port_file_name_.c_str());
 
-	event_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
-	overlapped_.hEvent = event_;
+	read_event_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+	read_overlapped_.hEvent = read_event_;
 
-	winfx::App::getSingleton().addEventHandler(event_, 
+	write_event_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
+	write_overlapped_.hEvent = write_event_;
+
+	winfx::App::getSingleton().addEventHandler(read_event_, 
 		std::bind(&Serial::onAsyncReadCompleted, this));
 
 	return startAsyncRead();
@@ -95,7 +98,7 @@ HRESULT Serial::startAsyncRead() {
 	for (;;) {
 		DWORD bytes_transferred = 0;
 		if (::ReadFile(com_port_, &read_buffer_, kReadBufferSize,
-					   &bytes_transferred, &overlapped_)) {
+					   &bytes_transferred, &read_overlapped_)) {
 			// Read was successful. Process the data.
 			processReadBuffer(bytes_transferred);
 		} else {
@@ -119,7 +122,7 @@ HRESULT Serial::startAsyncRead() {
 HRESULT Serial::onAsyncReadCompleted() {
 	// Find out the result of the read.
 	DWORD bytes_transferred = 0;
-	if (::GetOverlappedResult(com_port_, &overlapped_, &bytes_transferred, FALSE)) {
+	if (::GetOverlappedResult(com_port_, &read_overlapped_, &bytes_transferred, FALSE)) {
 		if (bytes_transferred > 0) {
 			processReadBuffer(bytes_transferred);
 		}
@@ -136,20 +139,64 @@ HRESULT Serial::onAsyncReadCompleted() {
 	return startAsyncRead();
 }
 
+HRESULT Serial::write(const BYTE* data, int len) {
+	if (com_port_ == INVALID_HANDLE_VALUE) {
+		winfx::DebugOut(L"Cannot write Serial port. Com port is not open\n");
+		return E_INVALIDARG;
+	}
+	if (write_active_) {
+		// Cannot start a new write when an overlapped write is pending.
+		return E_PENDING;
+	}
+
+	winfx::DebugOut(L"Serial[%s]: writing %d bytes\n", port_file_name_.c_str(), len);
+	DWORD bytes_written;
+	if (!WriteFile(com_port_, data, len, &bytes_written, &write_overlapped_)) {
+		DWORD error_code = ::GetLastError();
+		if (error_code == ERROR_IO_PENDING) {
+			// The async operation is pending.
+			winfx::App::getSingleton().addEventHandler(write_event_, 
+				std::bind(&Serial::onAsyncWriteCompleted, this));
+			write_active_ = true;
+			return S_OK;
+		} else {
+			winfx::DebugOut(L"Serial[%s]: Error %08X from WriteFile\n",
+							port_file_name_.c_str(), error_code);
+			return HRESULT_FROM_WIN32(error_code);
+		}
+	}
+	winfx::DebugOut(L"Serial[%s]: wrote %d bytes\n", port_file_name_.c_str(), bytes_written);
+	return S_OK;
+}
+
+HRESULT Serial::onAsyncWriteCompleted() {
+	// Find out the result of the read.
+	DWORD bytes_written = 0;
+	if (::GetOverlappedResult(com_port_, &write_overlapped_, &bytes_written, FALSE)) {
+		winfx::DebugOut(L"Serial[%s]: wrote %d bytes\n", port_file_name_.c_str(), bytes_written);
+		winfx::App::getSingleton().removeEventHandler(write_event_);
+		write_active_ = false;
+		return S_OK;
+	} else {
+		DWORD error_code = ::GetLastError();
+		winfx::DebugOut(L"Serial[%s]: Error %08X from GetOverlappedResult\n",
+						port_file_name_.c_str(), error_code);
+		if (notification_sink_) {
+			notification_sink_->onDisconnected();
+		}
+		write_active_ = false;
+		return HRESULT_FROM_WIN32(error_code);
+	}
+}
+
+bool Serial::isConnected() {
+	return com_port_ != INVALID_HANDLE_VALUE;
+}
+
 void Serial::processReadBuffer(DWORD byte_count) {
 	winfx::DebugOut(L"Serial[%s]: read %d bytes\n", port_file_name_.c_str(), byte_count);
-
-	// Convert the bytes to Unicode wide chars
-	wchar_t buffer[kReadBufferSize + 1];
-	int chars_converted = MultiByteToWideChar(437, MB_PRECOMPOSED,
-		(LPCCH)read_buffer_, byte_count,
-		buffer, kReadBufferSize + 1);
-	if (chars_converted > 0) {
-		// Null terminate string
-		buffer[chars_converted] = L'\0';
-		if (notification_sink_) {
-			notification_sink_->onReceivedData(buffer, chars_converted);
-		}
+	if (notification_sink_) {
+		notification_sink_->onReceivedData(read_buffer_, byte_count);
 	}
 }
 
@@ -166,24 +213,22 @@ void Serial::close() {
 		com_port_ = INVALID_HANDLE_VALUE;
 	}
 
-	if (event_ != INVALID_HANDLE_VALUE) {
-		winfx::App::getSingleton().removeEventHandler(event_);
-		CloseHandle(event_);
-		event_ = INVALID_HANDLE_VALUE;
+	if (read_event_ != INVALID_HANDLE_VALUE) {
+		winfx::App::getSingleton().removeEventHandler(read_event_);
+		CloseHandle(read_event_);
+		read_event_ = INVALID_HANDLE_VALUE;
 	}
-}
 
+	if (write_event_ != INVALID_HANDLE_VALUE) {
+		winfx::App::getSingleton().removeEventHandler(write_event_);
+		CloseHandle(write_event_);
+		write_event_ = INVALID_HANDLE_VALUE;
+	}
+
+	write_active_ = false;
+}
 
 #if 0
-BOOL Serial::WriteMessage(HANDLE com_port, std::string message) {
-	DWORD bytes_written;
-	if (!WriteFile(com_port, message.c_str(), message.length(),
-				   &bytes_written, NULL)) {
-		return FALSE;
-	}
-	return TRUE;
-}
-
 Serial::SetReceiveMask() {
 	// Set Receive Mask
 	if (!SetCommMask(com_port, EV_RXCHAR)) {

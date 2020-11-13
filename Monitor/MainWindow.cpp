@@ -34,6 +34,7 @@ winfx::Size MainWindow::getDefaultWindowSize() {
 LRESULT MainWindow::handleWindowMessage(HWND hwndParam, UINT uMsg, 
 										WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
+		HANDLE_MSG(hwndParam, WM_CHAR, onChar);
 		HANDLE_MSG(hwndParam, WM_COMMAND, onCommand);
 		HANDLE_MSG(hwndParam, WM_DESTROY, onDestroy);
 		HANDLE_MSG(hwndParam, WM_PAINT, onPaint);
@@ -74,6 +75,23 @@ void MainWindow::onCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
 		disconnectSerial();
 		break;
 	}
+}
+
+LRESULT MainWindow::onChar(HWND hwndParam, TCHAR tch, int cRepeat) {
+	winfx::DebugOut(L"OnChar: %04x (%c) repeat=%d\n", tch, isprint(tch) ? tch : '-', cRepeat);
+	if (serial_.isConnected()) {
+		char ch;
+		if (WideCharToMultiByte(CP_OEMCP, 0, &tch, 1, &ch, 1, NULL, NULL) == 1) {
+			if (SUCCEEDED(serial_.write((BYTE*)&ch, 1))) {
+				text_window_.appendData(&tch, 1);
+			} else {
+				winfx::DebugOut(L"Failed to write to serial\n");
+			}
+		} else {
+			winfx::DebugOut(L"Error converting TCHAR to CHAR\n");
+		}
+	}
+	return 0;
 }
 
 void MainWindow::onPaint(HWND hwnd) {
@@ -140,9 +158,16 @@ void MainWindow::disconnectSerial() {
 	status_window_.setStatusMessage(L"Disconnected");
 }
 
-void MainWindow::onReceivedData(const wchar_t* data, int len) {
-	// winfx::DebugOut(L"SER->MW: READ: %s\n", data);
-	text_window_.appendData(data, len);
+void MainWindow::onReceivedData(const BYTE* data, int len) {
+	// Convert the bytes to Unicode wide chars
+	wchar_t buffer[kReadBufferSize + 1];
+	int chars_converted = MultiByteToWideChar(CP_OEMCP, MB_PRECOMPOSED,
+		(LPCCH)data, len, buffer, kReadBufferSize + 1);
+	if (chars_converted > 0) {
+		// Null terminate string
+		buffer[chars_converted] = L'\0';
+		text_window_.appendData(buffer, chars_converted);
+	}
 }
 
 void MainWindow::onDisconnected() {

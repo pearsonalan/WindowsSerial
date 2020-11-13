@@ -39,7 +39,7 @@ public:
 	LRESULT onClose(HWND hwnd) override;
 
 	// Callbacks for SerialNotificationSink
-	void onReceivedData(const wchar_t* data, int len) override;
+	void onReceivedData(const BYTE* data, int len) override;
 	void onDisconnected() override;
 	
 protected:
@@ -53,6 +53,7 @@ protected:
 	void onDestroy(HWND hwnd);
 	void onPaint(HWND hwnd);
 	LRESULT onSize(HWND hwnd, UINT state, int cx, int cy);
+	LRESULT onChar(HWND hwnd, TCHAR ch, int cRepeat);
 
 	Serial serial_;
 	StatusWindow status_window_;
